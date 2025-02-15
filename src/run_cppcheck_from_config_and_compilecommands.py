@@ -51,10 +51,10 @@ def read_cppcheck_config(config_path):
     Each line in the file represents a parameter.
     """
     with open(config_path, 'r') as f:
-        # Read lines, strip whitespace, and filter out empty lines
-        return [line.strip() for line in f.readlines() if line.strip()]
+        # Read lines, strip whitespace, filter out empty lines and comments
+        return [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
 
-def run_cppcheck(file_name, compile_commands):
+def run_cppcheck(cppcheck_command, file_name, compile_commands, build_directory):
     """
     Run cppcheck on the specified file using parameters from .cppcheck-config.
     """
@@ -64,11 +64,15 @@ def run_cppcheck(file_name, compile_commands):
         print("Error: .cppcheck-config file not found.")
         return
     
-    # Read the parameters from the config file
+    if not os.path.exists(build_directory):
+        os.makedirs(build_directory)
+    
     cppcheck_params = read_cppcheck_config(config_path)
     
+    template_command = "--template=START_ERROR\n[file]\n{file}\n[line]\n{line}\n[column]\n{column}\n[callstack]\n{callstack}\n[inconclusive]\n{inconclusive:text}\n[severity]\n{severity}\n[message]\n{message}\n[id]\n{id}\n[cwe]\n{cwe}\n[code]\n{code}\nSTOP_ERROR"
+
     # Build the cppcheck command
-    command = ['cppcheck', '--project=' + compile_commands] + cppcheck_params
+    command = [ cppcheck_command , '--project=' + compile_commands, '--cppcheck-build-dir=' + build_directory, template_command] + cppcheck_params
     
     # Run the command
     try:
@@ -90,14 +94,17 @@ def run_cppcheck(file_name, compile_commands):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python script.py <compile_commands.json> <target_file>")
+    if len(sys.argv) != 6:
+        print("Usage: python script.py <cppcheck_command> <compile_commands.json> <build_directory> <whole_program_checking> <target_file>")
         sys.exit(1)
 
     print("Current working directory:", os.getcwd())
     
-    compile_commands_path = sys.argv[1]
-    target_file_path = sys.argv[2]
+    cppcheck_command = sys.argv[1]
+    compile_commands_path = sys.argv[2]
+    build_directory = sys.argv[3]
+    whole_program_checking = sys.argv[4]
+    target_file_path = sys.argv[5]
     
     # Find the compile command for the target file
     filtered_commands = find_compile_command(compile_commands_path, target_file_path)
@@ -112,5 +119,5 @@ if __name__ == "__main__":
     save_compile_commands(output_path, filtered_commands)
     print(f"Filtered compile command saved to: {output_path}")
 
-    run_cppcheck(target_file_path, output_path)
+    run_cppcheck(cppcheck_command, target_file_path, output_path, build_directory)
     

@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
+import * as path from 'path';
+import * as CMakeTools from 'vscode-cmake-tools';
 
 enum SeverityNumber {
     Info = 0,
@@ -34,9 +36,13 @@ function parseMinSeverity(str: string): SeverityNumber {
     }
 }
 
+let my_context: vscode.ExtensionContext;
+
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
 export function activate(context: vscode.ExtensionContext) {
+    my_context = context;
+
 
     // Create a diagnostic collection.
     const diagnosticCollection = vscode.languages.createDiagnosticCollection("Cppcheck Lite");
@@ -47,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
         if (!["c", "cpp"].includes(document.languageId)) {
             // Not a C/C++ file, skip
             return;
-            
+
         }
 
         // Check if the document is visible in any editor
@@ -57,13 +63,18 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath || "";
+
         const config = vscode.workspace.getConfiguration();
-        const isEnabled = config.get<boolean>("cppcheck-lite.enable", true);
-        const extraArgs = config.get<string>("cppcheck-lite.arguments", "");
-        const minSevString = config.get<string>("cppcheck-lite.minSeverity", "info");
-        const standard = config.get<string>("cppcheck-lite.standard", "c++17");
-        const userPath = config.get<string>("cppcheck-lite.path")?.trim() || "";
+        const isEnabled = config.get<boolean>("cppcheck-lite2.enable", true);
+        const minSevString = config.get<string>("cppcheck-lite2.minSeverity", "info");
+        const userPath = config.get<string>("cppcheck-lite2.path")?.trim() || "";
+        const wholeProgramChecking = config.get<boolean>("cppcheck-lite2.wholeProgramChecking", true);
+        const buildDirectory = path.normalize(workspaceFolder + path.sep + (config.get<string>("cppcheck-lite2.buildDirectory")?.trim() || "cppcheck-lite2-build"));
         const commandPath = userPath ? userPath : "cppcheck";
+        let compileCommandsPath = config.get<string>("cppcheck-lite2.compileCommandsPath")?.trim() || "";
+
+        compileCommandsPath = path.normalize(compileCommandsPath ? workspaceFolder + path.sep + compileCommandsPath : (workspaceFolder + path.sep + "compile_commands.json"));
 
         // If disabled, clear any existing diagnostics for this doc.
         if (!isEnabled) {
@@ -72,10 +83,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         // Check if cppcheck is available
-        cp.exec(`${commandPath} --version`, (error) => {
+        cp.exec(`"${commandPath}" --version`, (error) => {
             if (error) {
                 vscode.window.showErrorMessage(
-                    `Cppcheck Lite: Could not find or run '${commandPath}'. ` +
+                    `Cppcheck Lite2: Could not find or run '${commandPath}'. ` +
                     `Please install cppcheck or set 'cppcheck-lite.path' correctly.`
                 );
                 return;
@@ -85,10 +96,11 @@ export function activate(context: vscode.ExtensionContext) {
         await runCppcheck(
             document,
             commandPath,
-            extraArgs,
             minSevString,
-            standard,
-            diagnosticCollection
+            wholeProgramChecking,
+            diagnosticCollection,
+            buildDirectory,
+            compileCommandsPath
         );
     }
 
@@ -115,18 +127,56 @@ export function activate(context: vscode.ExtensionContext) {
 async function runCppcheck(
     document: vscode.TextDocument,
     commandPath: string,
-    extraArgs: string,
     minSevString: string,
-    standard: string,
-    diagnosticCollection: vscode.DiagnosticCollection
+    wholeProgramChecking: boolean,
+    diagnosticCollection: vscode.DiagnosticCollection,
+    buildDirectory: string,
+    compileCommandsPath: string
+
 ): Promise<void> {
     // Clear existing diagnostics for this file
     diagnosticCollection.delete(document.uri);
 
     const filePath = document.fileName;
     const minSevNum = parseMinSeverity(minSevString);
-    const standardArg = standard !== "<none>" ? `--std=${standard}` : "";
-    const command = `${commandPath} ${standardArg} ${extraArgs} "${filePath}"`.trim();
+    const extensionPath = path.normalize(my_context.extensionPath);
+    const python_cppcheck = path.normalize(`python ${extensionPath}/src/run_cppcheck_from_config_and_compilecommands.py`);
+
+
+    // const cmakeTools = vscode.extensions.getExtension('ms-vscode.cmake-tools');
+    // if (cmakeTools && cmakeTools.isActive) {
+
+    // }
+
+    // const api = await CMakeTools.getCMakeToolsApi(CMakeTools.Version.v1);
+    // if (api) {
+    //     let project = await api.getProject(vscode.Uri.file('c:/development/cpp_boilerplate/CMakeLists.txt'));
+    //     if(project) {
+    //         let buildDir = await project.getBuildDirectory();
+    //         if(buildDir)
+    //         {
+    //             console.log(`CMake project: ${buildDir}`); 
+    //         }
+    //     }
+
+    //     let proj = await api.getActiveFolderPath();
+    //     if(proj) {
+    //         console.log(`CMake project folder: ${proj}`);
+    //         vscode.Uri.file('c:\development\cpp_boilerplate\CMakeLists.txt');
+
+    //     }
+
+    // }
+    // else
+    // {
+
+    // }
+
+
+
+
+    let wholeProgramCheckingStr: string = wholeProgramChecking ? "true" : "false";
+    const command = `${python_cppcheck} "${commandPath}" "${compileCommandsPath}" "${buildDirectory}" "${wholeProgramCheckingStr}" "${filePath}"`.trim();
 
     console.log("Cppcheck command:", command);
 
@@ -139,33 +189,116 @@ async function runCppcheck(
         const allOutput = stdout + "\n" + stderr;
         const diagnostics: vscode.Diagnostic[] = [];
 
-        // Example lines we might see:
-        //   file.cpp:6:1: error: Something [id]
-        //   file.cpp:14:2: warning: Something else [id]
-        const regex = /^(.*?):(\d+):(\d+):\s*(error|warning|style|performance|information|info|note):\s*(.*)$/gm;
+        // Define the start and end markers
+        const startMarker = "START_ERROR";
+        const endMarker = "STOP_ERROR";
 
-        let match;
-        while ((match = regex.exec(allOutput)) !== null) {
-            const [, file, lineStr, colStr, severityStr, message] = match;
-            const line = parseInt(lineStr, 10) - 1;
-            const col = parseInt(colStr, 10) - 1;
-            const diagSeverity = parseSeverity(severityStr);
+        // Split the output by the start marker
+        const errorBlocks = allOutput.split(startMarker);
 
-            // Filter out if severity is less than our minimum
-            if (severityToNumber(diagSeverity) < minSevNum) {
-                continue;
+        const keys = ["[file]", "[line]", "[column]", "[callstack]", "[inconclusive]", "[severity]", "[message]", "[id]", "[cwe]", "[code]", endMarker];
+
+        let skip = true;
+        // Loop through each error block
+        for (const block of errorBlocks) {
+            // Check if the block contains the end marker
+            if (block.includes(endMarker)) {
+                //the first one is the template regex
+                if (skip === true) {
+                    skip = false;
+                    continue;
+                }
+
+                // Extract the content between the start and end markers
+                // const errorContent = block.split(endMarker)[0];
+
+                // Parse the error content
+                const errorData: { [key: string]: string } = {};
+                const lines = block.trim().split('\r\n');
+                let active_key = 0;
+                let value: string = '';
+                for (let i = 1; i < lines.length - 1; i++) {
+                    if (lines[i] === keys[active_key + 1]) {
+                        errorData[keys[active_key]] = value.trim();
+                        active_key++;
+                        value = '';
+                    }
+                    else {
+                        value += lines[i] + '\n';
+                    }
+                }
+
+                let line = parseInt(errorData["[line]"], 10) - 1;
+                if (line < 0) {
+                    line = 0;
+                }
+                let col = parseInt(errorData["[column]"], 10) - 1;
+                if (col < 0) {
+                    col = 0;
+                }
+
+                const diagSeverity = parseSeverity(errorData["[severity]"]);
+
+                // Filter out if severity is less than our minimum
+                if (severityToNumber(diagSeverity) < minSevNum) {
+                    continue;
+                }
+
+                //Only print error if the files are the same
+                if (errorData["[file]"].toLowerCase() !== filePath.toLocaleLowerCase()) {
+                    continue;
+                }
+
+                const range = new vscode.Range(line, col, line, col);
+                const diagnostic = new vscode.Diagnostic(range, errorData["[message]"], diagSeverity);
+                diagnostic.code = errorData["[cwe]"];
+                diagnostic.source = errorData["[id]"]; //If we don't do this, the codes are empty for some reason. 
+                diagnostics.push(diagnostic);
+
+
+                // Now you have the error data in the errorData object
+                console.log(errorData);
+
+                // You can now use the errorData object to display or process the error information
+                // For example:
+                vscode.window.showErrorMessage(`Cppcheck Error: ${errorData['message']}`);
             }
 
-            // Only show diagnostics for the current file
-            if (!filePath.endsWith(file)) {
-                continue;
-            }
+            // Example lines we might see:
+            //   file.cpp:6:1: error: Something [id]
+            //   file.cpp:14:2: warning: Something else [id]
+            // const regex = /^(.*?):(\d+):(\d+):\s*(error|warning|style|performance|information|info|note):\s*(.*)(\[.*\])$/gm;
 
-            const range = new vscode.Range(line, col, line, col);
-            const diagnostic = new vscode.Diagnostic(range, message, diagSeverity);
-            diagnostic.code = standard !== "<none>" ? standard : "";; 
+            // let match;
+            // while ((match = regex.exec(allOutput)) !== null) {
+            //     const [, file, lineStr, colStr, severityStr, message, classifier] = match;
+            //     let line = parseInt(lineStr, 10) - 1;
+            //     if(line < 0) {
+            //         line = 0;
+            //     }
+            //     let col = parseInt(colStr, 10) - 1;
+            //     if(col < 0) {
+            //         col = 0;
+            //     }
 
-            diagnostics.push(diagnostic);
+            //     const diagSeverity = parseSeverity(severityStr);
+
+            //     // Filter out if severity is less than our minimum
+            //     if (severityToNumber(diagSeverity) < minSevNum) {
+            //         continue;
+            //     }
+
+            //     //Only print error if the files are the same
+            //     if (file.toLowerCase() !== filePath.toLocaleLowerCase()) {
+            //         continue;
+            //     }
+
+            //     const range = new vscode.Range(line, col, line, col);
+            //     const diagnostic = new vscode.Diagnostic(range, message, diagSeverity);
+            //     diagnostic.code = classifier;
+            //     diagnostic.source = " "; //If we don't do this, the codes are empty for some reason. 
+
+            //     diagnostics.push(diagnostic);
         }
 
         diagnosticCollection.set(document.uri, diagnostics);
@@ -173,4 +306,4 @@ async function runCppcheck(
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

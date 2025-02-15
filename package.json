@@ -6,6 +6,9 @@
   "engines": {
     "vscode": "^1.96.0"
   },
+  "extensionDependencies": [
+    "ms-vscode.cmake-tools"
+  ],
   "author": "Emiel Estiévenart",
   "repository": {
     "type": "git",
@@ -52,6 +55,11 @@
             ],
             "default": "info",
             "description": "Minimum severity of issues to report (info, warning, or error)."
+          },
+          "cppcheck-lite2.compileCommandsPath": {
+            "type": "string",
+            "default": "",
+            "description": "The path relative to the workspace to the compile_commands file. If empty, uses the workspace root."
           }
         }
       },
@@ -64,15 +72,15 @@
             "default": "",
             "description": "Path to the cppcheck executable. If empty, uses 'cppcheck' from the system PATH."
           },
-          "cppcheck-lite2.whole_program_checking": {
+          "cppcheck-lite2.wholeProgramChecking": {
             "type": "boolean",
             "default": false,
             "description": "By default, Cppcheck is run in such a way that only the current file is checked. If this setting is enabled, the whole program is checked."
-          }, 
-          "cppcheck-lite2.build_directory": {
+          },
+          "cppcheck-lite2.buildDirectory": {
             "type": "string",
             "default": "Cppcheck-lite2-build",
-            "description": "Path to the build directory. If empty, uses the workspace root/Cppcheck-lite2-build"
+            "description": "Relative path to the workspace where Cppcheck will output it's build output. If empty, uses the workspace workspaceRoot/cppcheck-lite2-build"
           }
         }
       }
@@ -96,5 +104,8 @@
     "@vscode/test-electron": "^2.4.1",
     "eslint": "^9.16.0",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "vscode-cmake-tools": "^1.2.0"
   }
 }
