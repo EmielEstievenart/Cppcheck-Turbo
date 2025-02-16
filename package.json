@@ -4,7 +4,7 @@
   "description": "A minimalistic VS Code extension that runs cppcheck on C/C++ files upon save and shows issues in the Problems panel. compile_commands.json and .cppcheck-config files are used to configure Cppcheck.",
   "version": "1.0.0",
   "engines": {
-    "vscode": "^1.96.0"
+    "vscode": "^1.97.0"
   },
   "extensionDependencies": [
     "ms-vscode.cmake-tools"
@@ -14,7 +14,7 @@
     "type": "git",
     "url": "https://github.com/EmielEstievenart/Cppcheck-Lite2"
   },
-  "publisher": "Emiel Estiévenart",
+  "publisher": "EmielEstievenart",
   "license": "MIT",
   "keywords": [
     "cppcheck",
@@ -35,6 +35,7 @@
     "onLanguage:c++"
   ],
   "main": "./out/extension.js",
+
   "contributes": {
     "configuration": [
       {
@@ -80,7 +81,7 @@
           "cppcheck-lite2.buildDirectory": {
             "type": "string",
             "default": "Cppcheck-lite2-build",
-            "description": "Relative path to the workspace where Cppcheck will output it's build output. If empty, uses the workspace workspaceRoot/cppcheck-lite2-build"
+            "description": "Relative path to the workspace where Cppcheck will output it's build output. If empty, uses the workspaceRoot/cppcheck-lite2-build"
           }
         }
       }
