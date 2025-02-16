@@ -49,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     output_channel.appendLine("Cppcheck Lite2 is now active!");
     // Create a diagnostic collection.
-    const diagnosticCollection = vscode.languages.createDiagnosticCollection("Cppcheck Lite");
+    const diagnosticCollection = vscode.languages.createDiagnosticCollection("Cppcheck-Lite2");
     context.subscriptions.push(diagnosticCollection);
 
     async function handleDocument(document: vscode.TextDocument) {
@@ -59,6 +59,12 @@ export function activate(context: vscode.ExtensionContext) {
         if (!["c", "cpp"].includes(document.languageId)) {
             output_channel.appendLine("Cppcheck Lite2: Not a C/C++ file, skipping.");
             // Not a C/C++ file, skip
+            return;
+        }
+
+        // Check if the file ends with .h or .hpp
+        if (document.fileName.endsWith('.h') || document.fileName.endsWith('.hpp')) {
+            output_channel.appendLine("Cppcheck Lite2: Skipping header file " + document.fileName);
             return;
         }
 
@@ -172,8 +178,10 @@ async function runCppcheck(
     {
         output_channel.appendLine("Cppcheck Lite2: Did not find .cppcheck-config file");
         vscode.window.showErrorMessage(`Cppcheck Lite: No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
-
+        return;
     }
+
+
 
     const minSevNum = parseMinSeverity(minSevString);
     const extensionPath = path.normalize(my_context.extensionPath);
