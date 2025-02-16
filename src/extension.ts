@@ -37,23 +37,28 @@ function parseMinSeverity(str: string): SeverityNumber {
 }
 
 let my_context: vscode.ExtensionContext;
+let output_channel = vscode.window.createOutputChannel("Cppcheck-lite2");
+
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
 export function activate(context: vscode.ExtensionContext) {
+
     my_context = context;
 
-
+    output_channel.appendLine("Cppcheck Lite2 is now active!");
     // Create a diagnostic collection.
     const diagnosticCollection = vscode.languages.createDiagnosticCollection("Cppcheck Lite");
     context.subscriptions.push(diagnosticCollection);
 
     async function handleDocument(document: vscode.TextDocument) {
+
+        output_channel.appendLine("Cppcheck Lite2: Running cppcheck on " + document.fileName);
         // Only process C/C++ files.
         if (!["c", "cpp"].includes(document.languageId)) {
+            output_channel.appendLine("Cppcheck Lite2: Not a C/C++ file, skipping.");
             // Not a C/C++ file, skip
             return;
-
         }
 
         // Check if the document is visible in any editor
@@ -137,6 +142,8 @@ async function runCppcheck(
     // Clear existing diagnostics for this file
     diagnosticCollection.delete(document.uri);
 
+    output_channel.appendLine("Cppcheck Lite2: Running cppcheck on " + document.fileName);
+
     const filePath = document.fileName;
     const minSevNum = parseMinSeverity(minSevString);
     const extensionPath = path.normalize(my_context.extensionPath);
@@ -178,13 +185,17 @@ async function runCppcheck(
     let wholeProgramCheckingStr: string = wholeProgramChecking ? "true" : "false";
     const command = `${python_cppcheck} "${commandPath}" "${compileCommandsPath}" "${buildDirectory}" "${wholeProgramCheckingStr}" "${filePath}"`.trim();
 
+    output_channel.appendLine("Cppcheck Lite2: Running command: " + command);
     console.log("Cppcheck command:", command);
 
     cp.exec(command, (error, stdout, stderr) => {
         if (error) {
+            output_channel.appendLine("Cppcheck Lite2: Error running cppcheck: " + error.message);
             vscode.window.showErrorMessage(`Cppcheck Lite: ${error.message}`);
             return;
         }
+
+        output_channel.appendLine("Cppcheck Lite2: Finished running cppcheck.");
 
         const allOutput = stdout + "\n" + stderr;
         const diagnostics: vscode.Diagnostic[] = [];
@@ -257,11 +268,11 @@ async function runCppcheck(
 
 
                 // Now you have the error data in the errorData object
-                console.log(errorData);
+                //console.log(errorData);
 
                 // You can now use the errorData object to display or process the error information
                 // For example:
-                vscode.window.showErrorMessage(`Cppcheck Error: ${errorData['message']}`);
+                //vscode.window.showErrorMessage(`Cppcheck Error: ${errorData['message']}`);
             }
 
             // Example lines we might see:
