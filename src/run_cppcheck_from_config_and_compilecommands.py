@@ -3,6 +3,23 @@ import sys
 import os
 import subprocess
 
+def find_compile_command_file(compile_commands_path, target_file_path):
+    # Load the compile_commands.json file
+    with open(compile_commands_path, 'r') as f:
+        compile_commands = json.load(f)
+    
+    # Normalize the target file path to ensure consistency
+    target_file_path = os.path.normpath(target_file_path).lower()
+    
+    # Search for the compile command that matches the target file
+    for command in compile_commands:
+        file_command = os.path.normpath(command['file']).lower()
+        if file_command == target_file_path:
+            return command['file'].replace('\\', '/')  # Return the file path with forward slashes
+    
+    # If no matching command is found, return an empty list
+    return []
+
 
 def find_compile_command(compile_commands_path, target_file_path):
     # Load the compile_commands.json file
@@ -68,11 +85,14 @@ def run_cppcheck(cppcheck_command, file_name, compile_commands, build_directory)
         os.makedirs(build_directory)
     
     cppcheck_params = read_cppcheck_config(config_path)
+
+    # Convert the compile_commands path to use forward slashes
+    
     
     template_command = "--template=START_ERROR\n[file]\n{file}\n[line]\n{line}\n[column]\n{column}\n[callstack]\n{callstack}\n[inconclusive]\n{inconclusive:text}\n[severity]\n{severity}\n[message]\n{message}\n[id]\n{id}\n[cwe]\n{cwe}\n[code]\n{code}\nSTOP_ERROR"
-
+    filter_commands = "--file-filter=" + file_name
     # Build the cppcheck command
-    command = [ cppcheck_command , '--project=' + compile_commands, '--cppcheck-build-dir=' + build_directory, template_command] + cppcheck_params
+    command = [ cppcheck_command , '--project=' + compile_commands, '--cppcheck-build-dir=' + build_directory, template_command, filter_commands] + cppcheck_params
     
     # Run the command
     try:
@@ -94,8 +114,8 @@ def run_cppcheck(cppcheck_command, file_name, compile_commands, build_directory)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 6:
-        print("Usage: python script.py <cppcheck_command> <compile_commands.json> <build_directory> <whole_program_checking> <target_file>")
+    if len(sys.argv) != 5:
+        print("Usage: python script.py <cppcheck_command> <compile_commands.json> <build_directory> <target_file>")
         sys.exit(1)
 
     print("Current working directory:", os.getcwd())
@@ -103,11 +123,11 @@ if __name__ == "__main__":
     cppcheck_command = sys.argv[1]
     compile_commands_path = sys.argv[2]
     build_directory = sys.argv[3]
-    whole_program_checking = sys.argv[4]
-    target_file_path = sys.argv[5]
+    target_file_path = sys.argv[4]
     
     # Find the compile command for the target file
     filtered_commands = find_compile_command(compile_commands_path, target_file_path)
+    file_filter = find_compile_command_file(compile_commands_path, target_file_path)
     
     if not filtered_commands:
         print(f"No compile command found for file: {target_file_path}")
@@ -115,9 +135,9 @@ if __name__ == "__main__":
     
     
     # Save the filtered compile command to a new file
-    output_path = os.path.join(os.path.dirname(compile_commands_path), 'compile_commands_cppcheck.json')
-    save_compile_commands(output_path, filtered_commands)
-    print(f"Filtered compile command saved to: {output_path}")
+    #output_path = os.path.join(os.path.dirname(compile_commands_path), 'compile_commands_cppcheck.json')
+    #save_compile_commands(output_path, filtered_commands)
+    #print(f"Filtered compile command saved to: {output_path}")
 
-    run_cppcheck(cppcheck_command, target_file_path, output_path, build_directory)
+    run_cppcheck(cppcheck_command, file_filter, compile_commands_path, build_directory)
     

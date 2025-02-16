@@ -40,7 +40,6 @@ This extension contributes the following settings under `cppcheck-lite.*`:
 - **`cppcheck-lite2.minSeverity`**: (string) Minimum severity to report (`info`, `warning`, or `error`).  `info` shows style, performance, portability and information messages.
 - **`cppcheck-lite2.compileCommandsPath"`**: (string) The path relative to the root of the workspace to the compile_commands.json. By default it searches the workspace root. This works well with the "cmake.copyCompileCommands" setting if you set it to "${workspaceFolder}/compile_commands.json".
 - **`cppcheck-lite2.path`**: (string) Path to the `cppcheck` executable. If left empty, `cppcheck` from the system PATH is used.
-- **`cppcheck-lite2.wholeProgramChecking`**: Not yet implemented. Instead of running Cppcheck on only a single file, run Cppcheck on the entire compile_commands.json and configure it to only check the active file. This might allow Cppcheck to get a better understanding of the entire project and enable it to give better results. Leaving this off will result in Cppcheck-lite2 to create a new compile_commands.json that only contains the file you just saved and run Cppcheck with that. This works fine, but it makes Cppcheck think your software is just the one file.
 - **`cppcheck-lite2.BuildDirectory`**: Relative path to the workspace where Cppcheck will output it's build output. If empty, uses the workspace workspaceRoot/cppcheck-lite2-build
 
 ## Reporting Issues

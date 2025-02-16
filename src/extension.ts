@@ -74,7 +74,6 @@ export function activate(context: vscode.ExtensionContext) {
         const isEnabled = config.get<boolean>("cppcheck-lite2.enable", true);
         const minSevString = config.get<string>("cppcheck-lite2.minSeverity", "info");
         const userPath = config.get<string>("cppcheck-lite2.path")?.trim() || "";
-        const wholeProgramChecking = config.get<boolean>("cppcheck-lite2.wholeProgramChecking", true);
         const buildDirectory = path.normalize(workspaceFolder + path.sep + (config.get<string>("cppcheck-lite2.buildDirectory")?.trim() || "cppcheck-lite2-build"));
         const commandPath = userPath ? userPath : "cppcheck";
         let compileCommandsPath = config.get<string>("cppcheck-lite2.compileCommandsPath")?.trim() || "";
@@ -102,7 +101,6 @@ export function activate(context: vscode.ExtensionContext) {
             document,
             commandPath,
             minSevString,
-            wholeProgramChecking,
             diagnosticCollection,
             buildDirectory,
             compileCommandsPath
@@ -133,7 +131,6 @@ async function runCppcheck(
     document: vscode.TextDocument,
     commandPath: string,
     minSevString: string,
-    wholeProgramChecking: boolean,
     diagnosticCollection: vscode.DiagnosticCollection,
     buildDirectory: string,
     compileCommandsPath: string
@@ -182,8 +179,7 @@ async function runCppcheck(
 
 
 
-    let wholeProgramCheckingStr: string = wholeProgramChecking ? "true" : "false";
-    const command = `${python_cppcheck} "${commandPath}" "${compileCommandsPath}" "${buildDirectory}" "${wholeProgramCheckingStr}" "${filePath}"`.trim();
+    const command = `${python_cppcheck} "${commandPath}" "${compileCommandsPath}" "${buildDirectory}" "${filePath}"`.trim();
 
     output_channel.appendLine("Cppcheck Lite2: Running command: " + command);
     console.log("Cppcheck command:", command);
