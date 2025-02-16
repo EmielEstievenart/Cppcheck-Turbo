@@ -163,19 +163,17 @@ async function runCppcheck(
 
 ): Promise<void> {
     // Clear existing diagnostics for this file
-    diagnosticCollection.delete(document.uri);
+
 
     output_channel.appendLine("Cppcheck Lite2: Running cppcheck on " + document.fileName);
 
     const filePath = document.fileName;
 
-    if(findCppcheckConfig(filePath)) 
-    {
+    if (findCppcheckConfig(filePath)) {
         output_channel.appendLine("Cppcheck Lite2: Found .cppcheck-config.");
-        
+
     }
-    else
-    {
+    else {
         output_channel.appendLine("Cppcheck Lite2: Did not find .cppcheck-config file");
         vscode.window.showErrorMessage(`Cppcheck Lite: No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
         return;
@@ -237,6 +235,11 @@ async function runCppcheck(
         const allOutput = stdout + "\n" + stderr;
         const diagnostics: vscode.Diagnostic[] = [];
 
+        diagnosticCollection.clear();
+
+
+
+
         // Define the start and end markers
         const startMarker = "START_ERROR";
         const endMarker = "STOP_ERROR";
@@ -245,6 +248,9 @@ async function runCppcheck(
         const errorBlocks = allOutput.split(startMarker);
 
         const keys = ["[file]", "[line]", "[column]", "[callstack]", "[inconclusive]", "[severity]", "[message]", "[id]", "[cwe]", "[code]", endMarker];
+
+        // let diagnosticsPerFile: { [key: string]: vscode.Diagnostic[] } = {};
+        let diagnosticsPerFile = new Map<string, vscode.Diagnostic[]>();
 
         let skip = true;
         // Loop through each error block
@@ -292,10 +298,11 @@ async function runCppcheck(
                     continue;
                 }
 
+
                 //Only print error if the files are the same
-                if (errorData["[file]"].toLowerCase() !== filePath.toLocaleLowerCase()) {
-                    continue;
-                }
+                // if (errorData["[file]"].toLowerCase() !== filePath.toLocaleLowerCase()) {
+                //     continue;
+                // }
 
                 const range = new vscode.Range(line, col, line, col);
                 const diagnostic = new vscode.Diagnostic(range, errorData["[message]"], diagSeverity);
@@ -303,53 +310,21 @@ async function runCppcheck(
                 diagnostic.source = errorData["[id]"]; //If we don't do this, the codes are empty for some reason. 
                 diagnostics.push(diagnostic);
 
-
-                // Now you have the error data in the errorData object
-                //console.log(errorData);
-
-                // You can now use the errorData object to display or process the error information
-                // For example:
-                //vscode.window.showErrorMessage(`Cppcheck Error: ${errorData['message']}`);
+                if (!diagnosticsPerFile.has(errorData["[file]"])) {
+                    diagnosticsPerFile.set(errorData["[file]"], [diagnostic]);
+                }
+                else {
+                    diagnosticsPerFile.get(errorData["[file]"])?.push(diagnostic);
+                }
             }
-
-            // Example lines we might see:
-            //   file.cpp:6:1: error: Something [id]
-            //   file.cpp:14:2: warning: Something else [id]
-            // const regex = /^(.*?):(\d+):(\d+):\s*(error|warning|style|performance|information|info|note):\s*(.*)(\[.*\])$/gm;
-
-            // let match;
-            // while ((match = regex.exec(allOutput)) !== null) {
-            //     const [, file, lineStr, colStr, severityStr, message, classifier] = match;
-            //     let line = parseInt(lineStr, 10) - 1;
-            //     if(line < 0) {
-            //         line = 0;
-            //     }
-            //     let col = parseInt(colStr, 10) - 1;
-            //     if(col < 0) {
-            //         col = 0;
-            //     }
-
-            //     const diagSeverity = parseSeverity(severityStr);
-
-            //     // Filter out if severity is less than our minimum
-            //     if (severityToNumber(diagSeverity) < minSevNum) {
-            //         continue;
-            //     }
-
-            //     //Only print error if the files are the same
-            //     if (file.toLowerCase() !== filePath.toLocaleLowerCase()) {
-            //         continue;
-            //     }
-
-            //     const range = new vscode.Range(line, col, line, col);
-            //     const diagnostic = new vscode.Diagnostic(range, message, diagSeverity);
-            //     diagnostic.code = classifier;
-            //     diagnostic.source = " "; //If we don't do this, the codes are empty for some reason. 
-
-            //     diagnostics.push(diagnostic);
         }
 
-        diagnosticCollection.set(document.uri, diagnostics);
+        diagnosticsPerFile.forEach((value, key) => {
+            const fileUri = vscode.Uri.file(key);
+            diagnosticCollection.set(fileUri, value);
+        });
+
+        //diagnosticCollection.set(document.uri, diagnostics);
     });
 }
 
