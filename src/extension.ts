@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
 import * as CMakeTools from 'vscode-cmake-tools';
+import * as fs from 'fs';
 
 enum SeverityNumber {
     Info = 0,
@@ -127,6 +128,25 @@ export function activate(context: vscode.ExtensionContext) {
     }, null, context.subscriptions);
 }
 
+function findCppcheckConfig(filePath: string): boolean {
+    let currentDir = path.dirname(filePath);
+
+    while (true) {
+        const configPath = path.join(currentDir, '.cppcheck-config');
+        if (fs.existsSync(configPath)) {
+            return true;
+        }
+
+        const parentDir = path.dirname(currentDir);
+        if (parentDir === currentDir) {
+            break;
+        }
+        currentDir = parentDir;
+    }
+
+    return false;
+}
+
 async function runCppcheck(
     document: vscode.TextDocument,
     commandPath: string,
@@ -142,6 +162,19 @@ async function runCppcheck(
     output_channel.appendLine("Cppcheck Lite2: Running cppcheck on " + document.fileName);
 
     const filePath = document.fileName;
+
+    if(findCppcheckConfig(filePath)) 
+    {
+        output_channel.appendLine("Cppcheck Lite2: Found .cppcheck-config.");
+        
+    }
+    else
+    {
+        output_channel.appendLine("Cppcheck Lite2: Did not find .cppcheck-config file");
+        vscode.window.showErrorMessage(`Cppcheck Lite: No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
+
+    }
+
     const minSevNum = parseMinSeverity(minSevString);
     const extensionPath = path.normalize(my_context.extensionPath);
     const python_cppcheck = path.normalize(`python ${extensionPath}/src/run_cppcheck_from_config_and_compilecommands.py`);
