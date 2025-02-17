@@ -246,10 +246,10 @@ async function runCppcheck(
     compileCommandsPath: string,
     statusBarItem: vscode.StatusBarItem
 ): Promise<void> {
-    // Clear existing diagnostics
-    diagnosticCollection.clear();
 
-    //Indicate vs code that Cppcheck is running: 
+    let startTime = Date.now();
+
+    diagnosticCollection.clear();
 
     const capitalizeFirstLetter = (text: string): string => {
         return text.replace(/(^[a-z])(?=:)/g, (match) => match.toUpperCase());
@@ -274,8 +274,12 @@ async function runCppcheck(
     cppcheckCommand = cppcheckCommand.replace(/\\/g, '/');
 
     const minSevNum = parseMinSeverity(minSevString);
-    output_channel.appendLine("Cppcheck Lite2: Running command: " + cppcheckCommand);
 
+    let endTime = Date.now();
+    output_channel.appendLine(`Cppcheck Lite2: Time taken to gather parameters: ${endTime - startTime}ms`);
+
+    output_channel.appendLine("Cppcheck Lite2: Running command: " + cppcheckCommand);
+    startTime = Date.now();
     cp.exec(cppcheckCommand, async (error, stdout, stderr) => {
         if (error) {
             output_channel.appendLine("Cppcheck Lite2: error running cppcheck: " + error.message);
@@ -286,9 +290,15 @@ async function runCppcheck(
             return;
         }
         else{
-            output_channel.appendLine("Cppcheck Lite2: Finished running cppcheck. Parsing output now. ");
 
+            endTime = Date.now();
+            output_channel.appendLine("Cppcheck Lite2: Finished running cppcheck. Parsing output now. ");
+            output_channel.appendLine(`Cppcheck Lite2: Time taken to run cppcheck: ${endTime - startTime}ms`);
+
+            startTime = Date.now();
             parseCppcheckOutput(stderr, minSevNum, diagnosticCollection);
+            endTime = Date.now();
+            output_channel.appendLine(`Cppcheck Lite2: Time taken to parse output: ${endTime - startTime}ms`);
         }
         statusBarItem.dispose();
     });
