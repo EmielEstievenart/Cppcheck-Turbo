@@ -72,10 +72,10 @@
             "default": "",
             "description": "Path to the cppcheck executable. If empty, uses 'cppcheck' from the system PATH."
           },
-          "cppcheck-lite2.buildDirectory": {
-            "type": "string",
-            "default": "Cppcheck-lite2-build",
-            "description": "Relative path to the workspace where Cppcheck will output it's build output. If empty, uses the workspaceRoot/cppcheck-lite2-build"
+          "cppcheck-lite2.useCompileCommands": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable the Cppcheck Lite2 compile commands. If this is disable you will need to configure the compile commands yourself in the .cppcheck-config."
           }
         }
       }

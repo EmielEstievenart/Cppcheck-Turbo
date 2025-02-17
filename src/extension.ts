@@ -89,6 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
         const buildDirectory = path.normalize(workspaceFolder + path.sep + (config.get<string>("cppcheck-lite2.buildDirectory")?.trim() || "cppcheck-lite2-build"));
         const commandPath = userPath ? userPath : "cppcheck";
         let compileCommandsPath = config.get<string>("cppcheck-lite2.compileCommandsPath")?.trim() || "";
+        const useCompileCommands = config.get<boolean>("cppcheck-lite2.useCompileCommands", false);
 
         compileCommandsPath = path.normalize(compileCommandsPath ? workspaceFolder + path.sep + compileCommandsPath : (workspaceFolder + path.sep + "compile_commands.json"));
 
@@ -116,6 +117,7 @@ export function activate(context: vscode.ExtensionContext) {
             diagnosticCollection,
             buildDirectory,
             compileCommandsPath,
+            useCompileCommands,
             item
         );
     }
@@ -244,6 +246,7 @@ async function runCppcheck(
     diagnosticCollection: vscode.DiagnosticCollection,
     buildDirectory: string,
     compileCommandsPath: string,
+    useCompileCommands: boolean,
     statusBarItem: vscode.StatusBarItem
 ): Promise<void> {
 
@@ -269,6 +272,11 @@ async function runCppcheck(
     let cppcheckParameterTemplate = '--xml';
     let cppcheckParameterFileFilter = `--file-filter="${filePath}"`;
     let cppcheckParameterProject = `--project="${compileCommandsPath}"`;
+    if(!useCompileCommands)
+    {
+        // Clear this as we expect the user to configure the rest via the .cppcheck-config file
+        cppcheckParameterProject = "";
+    }
 
     let cppcheckCommand = `"${cppcheckExePath}" ${cppcheck_config_params.join(' ')} ${cppcheckParameterFileFilter} ${cppcheckParameterTemplate} ${cppcheckParameterProject}`;
     cppcheckCommand = cppcheckCommand.replace(/\\/g, '/');
