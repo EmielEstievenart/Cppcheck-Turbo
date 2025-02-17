@@ -185,7 +185,10 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
             output_channel.appendLine("Cppcheck Lite2: Successfully parsed xml");
             let diagnosticsPerFile = new Map<string, vscode.Diagnostic[]>();
 
-            const errors = result.results.errors.error;
+            
+            const errors = Array.isArray(result.results.errors.error)
+            ? result.results.errors.error // Multiple errors (already an array)
+            : [result.results.errors.error]; // Single error (wrap in an array)
 
             errors.forEach((error: any, index: number) => {
                 // output_channel.appendLine(`\nError #${index + 1}:`);
