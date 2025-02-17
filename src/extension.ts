@@ -8,6 +8,7 @@ import xml2js from 'xml2js';
 
 
 
+
 enum SeverityNumber {
     Info = 0,
     Warning = 1,
@@ -185,10 +186,10 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
             output_channel.appendLine("Cppcheck Lite2: Successfully parsed xml");
             let diagnosticsPerFile = new Map<string, vscode.Diagnostic[]>();
 
-            
+
             const errors = Array.isArray(result.results.errors.error)
-            ? result.results.errors.error // Multiple errors (already an array)
-            : [result.results.errors.error]; // Single error (wrap in an array)
+                ? result.results.errors.error // Multiple errors (already an array)
+                : [result.results.errors.error]; // Single error (wrap in an array)
 
             errors.forEach((error: any, index: number) => {
                 // output_channel.appendLine(`\nError #${index + 1}:`);
@@ -199,38 +200,58 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                 // output_channel.appendLine('CWE:' + error.$.cwe);
                 // output_channel.appendLine('File:' + error.$.file0);
 
-                const location = error.location;
+                const locations = Array.isArray(error.location)
+                    ? error.location // Multiple locations (already an array)
+                    : [error.location]; // Single location (wrap in an array)
+
+                locations.forEach((location: any, index: number) => {
+                    const diagSeverity = parseSeverity(error.$.severity);
+
+                    if (location) {
+                        // Filter out if severity is less than our minimum
+                        if (severityToNumber(diagSeverity) >= minSevNum) {
+                            let line = 0;
+                            let col = 0;
+
+                            try {
+                                line = parseInt(location.$.line) - 1;
+                                if (line < 0) {
+                                    line = 0;
+                                }
+                                col = parseInt(location.$.column) - 1;
+                                if (col < 0) {
+                                    col = 0;
+                                }
+                            }
+                            catch (e) {
+                                output_channel.appendLine("Cppcheck Lite2: was parsing " + e);
+                            }
+
+
+                            const range = new vscode.Range(line, col, line, col);
+                            const diagnostic = new vscode.Diagnostic(range, error.$.msg, diagSeverity);
+                            diagnostic.code = error.$.cwe;
+                            diagnostic.source = error.$.id; //If we don't do this, the codes are empty for some reason. 
+
+                            if (!diagnosticsPerFile.has(location.$.file)) {
+                                diagnosticsPerFile.set(location.$.file, [diagnostic]);
+                            }
+                            else {
+                                diagnosticsPerFile.get(location.$.file)?.push(diagnostic);
+                            }
+                        }
+                    }
+
+                });
+                // const location = error.location;
                 // output_channel.appendLine('Location:');
                 // output_channel.appendLine('  File:' + location.$.file);
                 // output_channel.appendLine('  Line:' + location.$.line);
                 // output_channel.appendLine('  Column:' + location.$.column);
                 // output_channel.appendLine('  Info:' + location.$.info);
 
-                const diagSeverity = parseSeverity(error.$.severity);
 
-                // Filter out if severity is less than our minimum
-                if (severityToNumber(diagSeverity) >= minSevNum) {
-                    let line = parseInt(location.$.line) - 1;
-                    if (line < 0) {
-                        line = 0;
-                    }
-                    let col = parseInt(location.$.column) - 1;
-                    if (col < 0) {
-                        col = 0;
-                    }
 
-                    const range = new vscode.Range(line, col, line, col);
-                    const diagnostic = new vscode.Diagnostic(range, error.$.msg, diagSeverity);
-                    diagnostic.code = error.$.cwe;
-                    diagnostic.source = error.$.id; //If we don't do this, the codes are empty for some reason. 
-
-                    if (!diagnosticsPerFile.has(location.$.file)) {
-                        diagnosticsPerFile.set(location.$.file, [diagnostic]);
-                    }
-                    else {
-                        diagnosticsPerFile.get(location.$.file)?.push(diagnostic);
-                    }
-                }
 
             });
 
@@ -275,8 +296,7 @@ async function runCppcheck(
     let cppcheckParameterTemplate = '--xml';
     let cppcheckParameterFileFilter = `--file-filter="${filePath}"`;
     let cppcheckParameterProject = `--project="${compileCommandsPath}"`;
-    if(!useCompileCommands)
-    {
+    if (!useCompileCommands) {
         // Clear this as we expect the user to configure the rest via the .cppcheck-config file
         cppcheckParameterProject = "";
     }
@@ -300,7 +320,7 @@ async function runCppcheck(
             vscode.window.showErrorMessage(`Cppcheck Lite2: ${error.message}`);
             return;
         }
-        else{
+        else {
 
             endTime = Date.now();
             output_channel.appendLine("Cppcheck Lite2: Finished running cppcheck. Parsing output now. ");
