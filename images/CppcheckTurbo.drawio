@@ -1,0 +1,28 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36" version="26.0.11">
+  <diagram name="Page-1" id="pgW80LEBUXEHGZW5KRpE">
+    <mxGraphModel dx="821" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pLKOJE9dZnR0di9oG9hz-6" value="" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="370" y="90" width="83.32" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="pLKOJE9dZnR0di9oG9hz-1" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="320" y="90" width="110" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="pLKOJE9dZnR0di9oG9hz-3" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://raw.githubusercontent.com/Benio101/cpp-logo/master/cpp_logo.png;" vertex="1" parent="1">
+          <mxGeometry x="334.98" y="100" width="80.05" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="pLKOJE9dZnR0di9oG9hz-9" value="" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="470" y="90" width="30" height="10" as="geometry" />
+        </mxCell>
+        <mxCell id="pLKOJE9dZnR0di9oG9hz-10" value="" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="460" y="110" width="30" height="10" as="geometry" />
+        </mxCell>
+        <mxCell id="pLKOJE9dZnR0di9oG9hz-11" value="" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="470" y="130" width="30" height="10" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

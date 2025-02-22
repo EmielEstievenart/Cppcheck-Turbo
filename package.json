@@ -1,8 +1,8 @@
 {
-  "name": "cppcheck-lite2",
-  "displayName": "Cppcheck Lite2",
+  "name": "cppcheck-turbo",
+  "displayName": "Cppcheck Turbo",
   "description": "A minimalistic VS Code extension that runs cppcheck on C/C++ files upon save and shows issues in the Problems panel. compile_commands.json and .cppcheck-config files are used to configure Cppcheck.",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "engines": {
     "vscode": "^1.97.0"
   },
@@ -38,15 +38,15 @@
   "contributes": {
     "configuration": [
       {
-        "title": "Cppcheck Lite 2(General)",
+        "title": "Cppcheck Turbo (General)",
         "order": 1,
         "properties": {
-          "cppcheck-lite2.enable": {
+          "cppcheck-turbo.enable": {
             "type": "boolean",
             "default": true,
-            "description": "Enable or disable the Cppcheck Lite2 extension."
+            "description": "Enable or disable the Cppcheck Turbo extension."
           },
-          "cppcheck-lite2.minSeverity": {
+          "cppcheck-turbo.minSeverity": {
             "type": "string",
             "enum": [
               "info",
@@ -56,7 +56,7 @@
             "default": "info",
             "description": "Minimum severity of issues to report (info, warning, or error)."
           },
-          "cppcheck-lite2.compileCommandsPath": {
+          "cppcheck-turbo.compileCommandsPath": {
             "type": "string",
             "default": "",
             "description": "The path relative to the workspace to the compile_commands file. If empty, uses the workspace root."
@@ -64,18 +64,18 @@
         }
       },
       {
-        "title": "Cppcheck Lite2 (Advanced)",
+        "title": "Cppcheck Turbo (Advanced)",
         "order": 2,
         "properties": {
-          "cppcheck-lite2.path": {
+          "cppcheck-turbo.path": {
             "type": "string",
             "default": "",
             "description": "Path to the cppcheck executable. If empty, uses 'cppcheck' from the system PATH."
           },
-          "cppcheck-lite2.useCompileCommands": {
+          "cppcheck-turbo.useCompileCommands": {
             "type": "boolean",
             "default": true,
-            "description": "Enable or disable the Cppcheck Lite2 compile commands. If this is disable you will need to configure the compile commands yourself in the .cppcheck-config."
+            "description": "Enable or disable the Cppcheck Turbo usage of compile_commands.json. If this is disable you will need to configure the compile commands yourself in the .cppcheck-config."
           }
         }
       }
