@@ -1,19 +1,7 @@
 # Change Log
 
-## [1.3.0] - UNRELEASED
-- Added <none> option to `cppcheck-lite.standard`, allowing users to specify it manually via `cppcheck-lite.arguments` or let `cppcheck` use its default setting.
+## [2.0.3] - 2025-02-22
+- Initial published release
 
-## [1.2.1] - 2025-02-08
-- **FIX** Ignore background file openings (e.g., during symbol renaming) to prevent unnecessary Cppcheck runs and clutter in the Problems tab.
-
-## [1.2.0] - 2025-02-02
-- Added `cppcheck-lite.path` setting to specify a custom path to the `cppcheck` executable.
-- Improved error handling to display a message if `cppcheck` is not found or cannot be run.  
-
-## [1.1.0] - 2025-02-02
-- Added "Code" field showing the applied C/C++ standard to items in the Problems panel.
-- Enabled cppcheck execution when opening a new file.
-- Ensured cppcheck runs for all open files when a workspace is opened.
-
-## [1.0.0] - 2025-02-02
-Initial release
+## [0.0.0] - 2025-02-08
+- Internal development
