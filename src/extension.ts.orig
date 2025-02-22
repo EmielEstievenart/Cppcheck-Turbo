@@ -204,6 +204,18 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                 // output_channel.appendLine('CWE:' + error.$.cwe);
                 // output_channel.appendLine('File:' + error.$.file0);
 
+<<<<<<< HEAD
+                const locations = Array.isArray(error.location)
+                    ? error.location // Multiple locations (already an array)
+                    : [error.location]; // Single location (wrap in an array)
+
+                locations.forEach((location: any, index: number) => {
+                    const diagSeverity = parseSeverity(error.$.severity);
+
+                    if (location) {
+                        // Filter out if severity is less than our minimum
+                        if (severityToNumber(diagSeverity) >= minSevNum) {
+=======
                 if (error.location) {
                     const locations = Array.isArray(error.location)
                         ? error.location // Multiple locations (already an array)
@@ -215,6 +227,7 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                         if (location) {
                             // Filter out if severity is less than our minimum
                             // if (severityToNumber(diagSeverity) >= minSevNum) {
+>>>>>>> 759392d (Improve cppcheck output parsing and error handling)
                             let line = 0;
                             let col = 0;
 
@@ -235,7 +248,11 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
 
                             const range = new vscode.Range(line, col, line, col);
                             const diagnostic = new vscode.Diagnostic(range, error.$.msg, diagSeverity);
+<<<<<<< HEAD
+                            diagnostic.code = error.$.cwe;
+=======
                             diagnostic.code = error.$.cwe ? error.$.cwe : " ";
+>>>>>>> 759392d (Improve cppcheck output parsing and error handling)
                             diagnostic.source = error.$.id; //If we don't do this, the codes are empty for some reason. 
 
                             if (!diagnosticsPerFile.has(location.$.file)) {
@@ -244,6 +261,12 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                             else {
                                 diagnosticsPerFile.get(location.$.file)?.push(diagnostic);
                             }
+<<<<<<< HEAD
+                        }
+                    }
+
+                });
+=======
                             // }
                         }
                     });
@@ -254,6 +277,7 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                 }
 
 
+>>>>>>> 759392d (Improve cppcheck output parsing and error handling)
                 // const location = error.location;
                 // output_channel.appendLine('Location:');
                 // output_channel.appendLine('  File:' + location.$.file);
