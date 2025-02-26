@@ -10,7 +10,7 @@
 - **`.cppcheck-config`**: Cppcheck Turbo searches for a `.cppcheck-config` file in the same folder or up as the file being checked. This allows for easy configuration of Cppcheck by adding a `.cppcheck-config` file to your project.
 - **Output window diagnostics**: In case of problems, you can monitor the plugin in the output tab in its own channel. 
 
-![Local GIF](./images/HowTo.gif)
+![Local GIF](https://github.com/EmielEstievenart/Cppcheck-Turbo/blob/main/images/howTo.gif?raw=true)
 
 ## Requirements
 

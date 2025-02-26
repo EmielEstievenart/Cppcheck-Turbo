@@ -2,7 +2,7 @@
   "name": "cppcheck-turbo",
   "displayName": "Cppcheck Turbo",
   "description": "A minimalistic VS Code extension that runs cppcheck on C/C++ files upon save and shows issues in the Problems panel. compile_commands.json and .cppcheck-config files are used to configure Cppcheck.",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "engines": {
     "vscode": "^1.97.0"
   },

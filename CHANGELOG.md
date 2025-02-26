@@ -1,5 +1,8 @@
 # Change Log
 
+## [2.0.5] - 2025-02-26
+- Change link to GIF to git repo so maybe now it works
+
 ## [2.0.4] - 2025-02-26
 - Fix typos in readme
 - Add HowTo.gif
