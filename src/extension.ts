@@ -3,6 +3,7 @@ import * as cp from 'child_process';
 import * as path from 'path';
 import * as CMakeTools from 'vscode-cmake-tools';
 import * as fs from 'fs';
+const util = require('util');
 
 import xml2js from 'xml2js';
 import { Console } from 'console';
@@ -117,12 +118,22 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         cppcheckPromise
+            .then(() => {
+                item.text = "Done checking " + path.basename(document.fileName);
+                setTimeout(() => {
+                    item.dispose();
+                }, 1000);
+            })
             .catch((err) => {
-                item.dispose();
-                vscode.window.showErrorMessage(`Cppcheck-Turbo: ${err}`);
+                item.text = "Error checking " + path.basename(document.fileName);
+                setTimeout(() => {
+                    item.dispose();
+                }, 2000);
+                output_channel.appendLine("Cppcheck-Turbo: " + err);
+                // vscode.window.showErrorMessage(`Cppcheck-Turbo: ${err}`);
             })
             .finally(() => {
-                item.dispose();
+
             });
 
     }
@@ -274,6 +285,9 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
     });
 }
 
+const exec = util.promisify(cp.exec);
+
+
 async function runCppcheck(
     fileToCheck: vscode.TextDocument,
     cppcheckExePath: string,
@@ -284,15 +298,14 @@ async function runCppcheck(
     useCompileCommands: boolean,
 ): Promise<void> {
 
-    // Check if cppcheck is available
-    cp.exec(`"${cppcheckExePath}" --version`, (error) => {
-        if (error) {
-
-            let errorMessage = `Cppcheck-Turbo: Could not find or run '${cppcheckExePath}'. ` +
-                `Please install cppcheck and add to path or set 'cppcheck-turbo.path' correctly.`;
-            throw new Error(errorMessage);
-        }
-    });
+    try
+    {
+        await exec(`"${cppcheckExePath}" --version`);
+    }
+    catch (error)
+    {
+        throw error;
+    }
 
     let startTime = Date.now();
 
