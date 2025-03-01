@@ -271,6 +271,10 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     if (!cppcheckConfigPath) {
         output_channel.appendLine("Did not find .cppcheck-config file");
         vscode.window.showErrorMessage(`No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
+        statusBarItem.text = "Error checking " + path.basename(fileToCheck.fileName);
+        setTimeout(() => {
+            statusBarItem.dispose();
+        }, 2000);
         return;
     }
 

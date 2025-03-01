@@ -1,5 +1,8 @@
 # Change Log
 
+## [2.0.7] - 2025-03-01
+- Fix bug where cppchecking would stay visible if no .cppcheck-config is found. 
+
 ## [2.0.6] - 2025-03-01
 - Fix bug where Cppcheck done was shown before it was done.
 - Fix bug that would run Cppcheck by just opening files.
