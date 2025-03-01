@@ -135,22 +135,10 @@ export function activate(context: vscode.ExtensionContext) {
             .finally(() => {
 
             });
-
     }
 
     // Listen for file saves.
     vscode.workspace.onDidSaveTextDocument(handleDocument, null, context.subscriptions);
-
-    // Run cppcheck when a file is opened
-    vscode.workspace.onDidOpenTextDocument(handleDocument, null, context.subscriptions);
-
-    // Run cppcheck for all open files when the workspace is opened
-    vscode.workspace.onDidChangeWorkspaceFolders(() => {
-        vscode.workspace.textDocuments.forEach(handleDocument);
-    }, null, context.subscriptions);
-
-    // Run cppcheck for all open files at activation (for already opened workspaces)
-    vscode.workspace.textDocuments.forEach(handleDocument);
 
     // Clean up diagnostics when a file is closed
     vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
