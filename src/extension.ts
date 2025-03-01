@@ -1,13 +1,10 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
-import * as CMakeTools from 'vscode-cmake-tools';
+// import * as CMakeTools from 'vscode-cmake-tools';
 import * as fs from 'fs';
-const util = require('util');
 
 import xml2js from 'xml2js';
-import { Console } from 'console';
-
 
 enum SeverityNumber {
     Info = 0,
@@ -49,7 +46,7 @@ function parseMinSeverity(str: string): SeverityNumber {
 let my_context: vscode.ExtensionContext;
 let output_channel = vscode.window.createOutputChannel("Cppcheck-Turbo");
 
-let i = 0;
+let xmlFileIndex = 0;
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
@@ -81,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        output_channel.appendLine("Cppcheck-Turbo: Running cppcheck on " + document.fileName);
+        output_channel.appendLine("Running cppcheck on " + document.fileName);
         let item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         item.text = "Cppchecking " + path.basename(document.fileName);
         item.show();
@@ -105,36 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-
-
-        const cppcheckPromise = runCppcheck(
-            document,
-            commandPath,
-            minSevString,
-            diagnosticCollection,
-            buildDirectory,
-            compileCommandsPath,
-            useCompileCommands,
-        );
-
-        cppcheckPromise
-            .then(() => {
-                item.text = "Done checking " + path.basename(document.fileName);
-                setTimeout(() => {
-                    item.dispose();
-                }, 1000);
-            })
-            .catch((err) => {
-                item.text = "Error checking " + path.basename(document.fileName);
-                setTimeout(() => {
-                    item.dispose();
-                }, 2000);
-                output_channel.appendLine("Cppcheck-Turbo: " + err);
-                // vscode.window.showErrorMessage(`Cppcheck-Turbo: ${err}`);
-            })
-            .finally(() => {
-
-            });
+        runCppcheckChain(document, commandPath, minSevString, diagnosticCollection, buildDirectory, compileCommandsPath, useCompileCommands, item);
     }
 
     // Listen for file saves.
@@ -176,17 +144,17 @@ function readCppcheckConfig(configPath: string): string[] {
 }
 
 function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnosticCollection: vscode.DiagnosticCollection): void {
-    output_channel.appendLine("Cppcheck-Turbo: Parsing \n\r" + output);
+    output_channel.appendLine("Parsing \n\r" + output);
 
     const parser = new xml2js.Parser({ explicitArray: false });
 
     parser.parseString(output, (err, result) => {
         if (err) {
-            output_channel.appendLine("Cppcheck-Turbo: Error parsing xml: " + err);
+            output_channel.appendLine("Error parsing xml: " + err);
             return;
         }
         else {
-            output_channel.appendLine("Cppcheck-Turbo: Successfully parsed xml");
+            output_channel.appendLine("Successfully parsed xml");
             let diagnosticsPerFile = new Map<string, vscode.Diagnostic[]>();
 
 
@@ -195,14 +163,6 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                 : [result.results.errors.error]; // Single error (wrap in an array)
 
             errors.forEach((error: any, index: number) => {
-                // output_channel.appendLine(`\nError #${index + 1}:`);
-                // output_channel.appendLine('ID:' + error.$.id);
-                // output_channel.appendLine('Severity:' + error.$.severity);
-                // output_channel.appendLine('Message:' + error.$.msg);
-                // output_channel.appendLine('Verbose:' + error.$.verbose);
-                // output_channel.appendLine('CWE:' + error.$.cwe);
-                // output_channel.appendLine('File:' + error.$.file0);
-
                 if (error.location) {
                     const locations = Array.isArray(error.location)
                         ? error.location // Multiple locations (already an array)
@@ -228,7 +188,7 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                                 }
                             }
                             catch (e) {
-                                output_channel.appendLine("Cppcheck-Turbo: was parsing " + e);
+                                output_channel.appendLine("Was parsing " + e);
                             }
 
 
@@ -251,18 +211,6 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                     console.log("");
 
                 }
-
-
-                // const location = error.location;
-                // output_channel.appendLine('Location:');
-                // output_channel.appendLine('  File:' + location.$.file);
-                // output_channel.appendLine('  Line:' + location.$.line);
-                // output_channel.appendLine('  Column:' + location.$.column);
-                // output_channel.appendLine('  Info:' + location.$.info);
-
-
-
-
             });
 
             diagnosticsPerFile.forEach((value, key) => {
@@ -273,10 +221,7 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
     });
 }
 
-const exec = util.promisify(cp.exec);
-
-
-async function runCppcheck(
+function runCppcheckChain(
     fileToCheck: vscode.TextDocument,
     cppcheckExePath: string,
     minSevString: string,
@@ -284,18 +229,36 @@ async function runCppcheck(
     buildDirectory: string,
     compileCommandsPath: string,
     useCompileCommands: boolean,
-): Promise<void> {
-
-    try
-    {
-        await exec(`"${cppcheckExePath}" --version`);
-    }
-    catch (error)
-    {
-        throw error;
-    }
-
+    statusBarItem: vscode.StatusBarItem
+) {
     let startTime = Date.now();
+    const p = cp.exec(`"${cppcheckExePath}" --version`, async (error, stdout, stderr) => {
+        if (error) {
+            output_channel.appendLine("Error checking version: " + error.message);
+            output_channel.appendLine("stdout: " + stdout);
+            output_channel.appendLine("stderr: " + stderr);
+            vscode.window.showErrorMessage(`Cppcheck-Turbo: ${error.message}`);
+            statusBarItem.text = "Error checking " + path.basename(fileToCheck.fileName);
+            setTimeout(() => {
+                statusBarItem.dispose();
+            }, 2000);
+            return;
+        }
+        else {
+            runCppcheck(fileToCheck, cppcheckExePath, minSevString, diagnosticCollection, buildDirectory, compileCommandsPath, useCompileCommands, startTime, statusBarItem);
+        }
+    });
+}
+
+function runCppcheck(fileToCheck: vscode.TextDocument,
+    cppcheckExePath: string,
+    minSevString: string,
+    diagnosticCollection: vscode.DiagnosticCollection,
+    buildDirectory: string,
+    compileCommandsPath: string,
+    useCompileCommands: boolean,
+    startTime: number, 
+    statusBarItem: vscode.StatusBarItem) {
 
     diagnosticCollection.clear();
 
@@ -306,23 +269,24 @@ async function runCppcheck(
 
     let cppcheckConfigPath = findCppcheckConfig(filePath);
     if (!cppcheckConfigPath) {
-        output_channel.appendLine("Cppcheck-Turbo: Did not find .cppcheck-config file");
-        vscode.window.showErrorMessage(`Cppcheck-Turbo: No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
+        output_channel.appendLine("Did not find .cppcheck-config file");
+        vscode.window.showErrorMessage(`No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
         return;
     }
 
-    output_channel.appendLine("Cppcheck-Turbo: Found .cppcheck-config.");
+    output_channel.appendLine(`Found .cppcheck-config: ${cppcheckConfigPath}`);
     let cppcheck_config_params = readCppcheckConfig(cppcheckConfigPath);
 
     let cppcheckParameterTemplate = '--xml';
     let cppcheckParameterFileFilter = `--file-filter="${filePath}"`;
     let cppcheckParameterProject = `--project="${compileCommandsPath}"`;
+
     if (!useCompileCommands) {
         // Clear this as we expect the user to configure the rest via the .cppcheck-config file
         cppcheckParameterProject = "";
     }
-    let cppcheckXmlFile = "cppcheck_errors" + i.toString() + ".xml";
-    i++;
+    let cppcheckXmlFile = "cppcheck_errors" + xmlFileIndex.toString() + ".xml";
+    xmlFileIndex++;
 
     let cppcheckCommand = `"${cppcheckExePath}" ${cppcheck_config_params.join(' ')} ${cppcheckParameterFileFilter} ${cppcheckParameterTemplate} ${cppcheckParameterProject} 2> ${cppcheckXmlFile}`;
     cppcheckCommand = cppcheckCommand.replace(/\\/g, '/');
@@ -330,64 +294,60 @@ async function runCppcheck(
     const minSevNum = parseMinSeverity(minSevString);
 
     let endTime = Date.now();
-    output_channel.appendLine(`Cppcheck-Turbo: Time taken to gather parameters: ${endTime - startTime}ms`);
+    output_channel.appendLine(`Time taken to gather parameters: ${endTime - startTime}ms`);
 
-    output_channel.appendLine("Cppcheck-Turbo: Running command: " + cppcheckCommand);
+    output_channel.appendLine("Running command: " + cppcheckCommand);
     startTime = Date.now();
-    const p = cp.exec(cppcheckCommand, async (error, stdout, stderr) => {
+
+    cp.exec(cppcheckCommand, async (error, stdout, stderr) => {
         if (error) {
-            output_channel.appendLine("Cppcheck-Turbo: error running cppcheck: " + error.message);
-            output_channel.appendLine("Cppcheck-Turbo: stdout:" + stdout);
-            output_channel.appendLine("Cppcheck-Turbo: stderr:" + stderr);
-
+            output_channel.appendLine("Error checking version: " + error.message);
+            output_channel.appendLine("stdout: " + stdout);
+            output_channel.appendLine("stderr: " + stderr);
             vscode.window.showErrorMessage(`Cppcheck-Turbo: ${error.message}`);
-            fs.unlink(cppcheckXmlFile, (err) => {
-                if (err) {
-                    console.error('Error deleting the file:', err);
-                    return;
-                }
-                console.log('File deleted successfully');
-            });
-
+            statusBarItem.text = "Error checking " + path.basename(fileToCheck.fileName);
+            setTimeout(() => {
+                statusBarItem.dispose();
+            }, 2000);
             return;
         }
         else {
-
             endTime = Date.now();
-            output_channel.appendLine("Cppcheck-Turbo: Finished running cppcheck. Parsing output now. ");
-            output_channel.appendLine(`Cppcheck-Turbo: Time taken to run cppcheck: ${endTime - startTime}ms`);
+            output_channel.appendLine("Finished running cppcheck. Parsing output now. ");
+            output_channel.appendLine(`Time taken to run cppcheck: ${endTime - startTime}ms`);
 
-            fs.readFile(cppcheckXmlFile, 'utf8', (err, data) => {
-                if (err) {
-                    console.error('Error reading the file:', err);
-                    fs.unlink(cppcheckXmlFile, (err) => {
-                        if (err) {
-                            console.error('Error deleting the file:', err);
-                            return;
-                        }
-                        console.log('File deleted successfully');
-                    });
-                    return;
-                }
-
-                // Store the file content in a string
-                //const fileContent: string = data;
-                //console.log('File content:', fileContent);
-
+            try {
+                const data = fs.readFileSync(cppcheckXmlFile, 'utf-8');
                 startTime = Date.now();
                 parseCppcheckOutput(data, minSevNum, diagnosticCollection);
                 endTime = Date.now();
-                output_channel.appendLine(`Cppcheck-Turbo: Time taken to parse output: ${endTime - startTime}ms`);
+                output_channel.appendLine(`Time taken to parse output: ${endTime - startTime}ms`);
+                statusBarItem.text = "Done checking " + path.basename(fileToCheck.fileName);
+                setTimeout(() => {
+                    statusBarItem.dispose();
+                }, 2000);
+            }
+            catch {
+                statusBarItem.text = "Error checking " + path.basename(fileToCheck.fileName);
+                setTimeout(() => {
+                    statusBarItem.dispose();
+                }, 2000);
+            }
+            finally {
                 fs.unlink(cppcheckXmlFile, (err) => {
                     if (err) {
-                        console.error('Error deleting the file:', err);
+                        console.error(`Error deleting the ${cppcheckXmlFile}:`, err);
+                        output_channel.append(`Error deleting the ${cppcheckXmlFile}: ${err}`);
                         return;
                     }
                     console.log('File deleted successfully');
+                    output_channel.append(`${cppcheckXmlFile} deleted successfully`);
                 });
-            });
+
+            }
         }
     });
+
 }
 
 // This method is called when your extension is deactivated
