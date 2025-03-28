@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
+import * as vscode from 'vscode';
 // import * as CMakeTools from 'vscode-cmake-tools';
 import * as fs from 'fs';
 
@@ -57,7 +57,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Create a diagnostic collection.
     const diagnosticCollection = vscode.languages.createDiagnosticCollection("Cppcheck-Turbo");
     context.subscriptions.push(diagnosticCollection);
-
+    let autoRun = vscode.workspace.getConfiguration().get<boolean>("cppcheck-turbo.autorun") || true;
     async function handleDocument(document: vscode.TextDocument) {
 
         // Only process C/C++ files.
@@ -86,6 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath || "";
 
         const config = vscode.workspace.getConfiguration();
+         autoRun = config.get<boolean>("cppcheck-turbo.autorun") || true;
         const isEnabled = config.get<boolean>("cppcheck-turbo.enable", true);
         const minSevString = config.get<string>("cppcheck-turbo.minSeverity", "info");
         const userPath = config.get<string>("cppcheck-turbo.path")?.trim() || "";
@@ -94,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
         let compileCommandsPath = config.get<string>("cppcheck-turbo.compileCommandsPath")?.trim() || "";
         const useCompileCommands = config.get<boolean>("cppcheck-turbo.useCompileCommands", false);
 
-        compileCommandsPath = path.normalize(compileCommandsPath ? workspaceFolder + path.sep + compileCommandsPath : (workspaceFolder + path.sep + "compile_commands.json"));
+        compileCommandsPath = path.normalize(workspaceFolder + path.sep + (compileCommandsPath || "compile_commands.json"));
 
         // If disabled, clear any existing diagnostics for this doc.
         if (!isEnabled) {
@@ -107,6 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Listen for file saves.
     vscode.workspace.onDidSaveTextDocument(handleDocument, null, context.subscriptions);
+    vscode.window.onDidChangeVisibleTextEditors(eds => eds.forEach(ed => handleDocument(ed.document)))
 
     // Clean up diagnostics when a file is closed
     vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
@@ -143,7 +145,7 @@ function readCppcheckConfig(configPath: string): string[] {
         .filter(line => line && !line.startsWith('#'));
 }
 
-function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnosticCollection: vscode.DiagnosticCollection): void {
+function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnosticCollection: vscode.DiagnosticCollection, workspacePath: string): void {
     output_channel.appendLine("Parsing \n\r" + output);
 
     const parser = new xml2js.Parser({ explicitArray: false });
@@ -196,12 +198,13 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                             const diagnostic = new vscode.Diagnostic(range, error.$.msg, diagSeverity);
                             diagnostic.code = error.$.cwe ? error.$.cwe : " ";
                             diagnostic.source = error.$.id; //If we don't do this, the codes are empty for some reason. 
+                            const file = workspacePath + path.sep + location.$.file;
 
-                            if (!diagnosticsPerFile.has(location.$.file)) {
-                                diagnosticsPerFile.set(location.$.file, [diagnostic]);
+                            if (!diagnosticsPerFile.has(file)) {
+                                diagnosticsPerFile.set(file, [diagnostic]);
                             }
                             else {
-                                diagnosticsPerFile.get(location.$.file)?.push(diagnostic);
+                                diagnosticsPerFile.get(file)?.push(diagnostic);
                             }
                             // }
                         }
@@ -257,7 +260,7 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     buildDirectory: string,
     compileCommandsPath: string,
     useCompileCommands: boolean,
-    startTime: number, 
+    startTime: number,
     statusBarItem: vscode.StatusBarItem) {
 
     diagnosticCollection.clear();
@@ -265,9 +268,18 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     const capitalizeFirstLetter = (text: string): string => {
         return text.replace(/(^[a-z])(?=:)/g, (match) => match.toUpperCase());
     };
-    const filePath = capitalizeFirstLetter(fileToCheck.fileName);
-
+    let filePath = fileToCheck.fileName;
     let cppcheckConfigPath = findCppcheckConfig(filePath);
+    let workspacePath = "";
+
+    for (const f of vscode.workspace.workspaceFolders || []) {
+        workspacePath = f.uri.fsPath;
+        if (filePath.startsWith(workspacePath)) {
+            filePath = filePath.replace(workspacePath + path.sep, '');
+            break;
+        }
+    }
+
     if (!cppcheckConfigPath) {
         output_channel.appendLine("Did not find .cppcheck-config file");
         vscode.window.showErrorMessage(`No .cppcheck-config file found. Please create one and place it just like you would a .clang-tidy or .clang-format file. `);
@@ -282,14 +294,14 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     let cppcheck_config_params = readCppcheckConfig(cppcheckConfigPath);
 
     let cppcheckParameterTemplate = '--xml';
-    let cppcheckParameterFileFilter = `--file-filter="${filePath}"`;
+    let cppcheckParameterFileFilter = `--file-filter="${capitalizeFirstLetter(filePath)}"`;
     let cppcheckParameterProject = `--project="${compileCommandsPath}"`;
 
     if (!useCompileCommands) {
         // Clear this as we expect the user to configure the rest via the .cppcheck-config file
         cppcheckParameterProject = "";
     }
-    let cppcheckXmlFile = "cppcheck_errors" + xmlFileIndex.toString() + ".xml";
+    let cppcheckXmlFile = path.resolve('.', "cppcheck_errors" + xmlFileIndex.toString() + ".xml");
     xmlFileIndex++;
 
     let cppcheckCommand = `"${cppcheckExePath}" ${cppcheck_config_params.join(' ')} ${cppcheckParameterFileFilter} ${cppcheckParameterTemplate} ${cppcheckParameterProject} 2> ${cppcheckXmlFile}`;
@@ -303,11 +315,11 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     output_channel.appendLine("Running command: " + cppcheckCommand);
     startTime = Date.now();
 
-    cp.exec(cppcheckCommand, async (error, stdout, stderr) => {
+    cp.exec(cppcheckCommand, { cwd: workspacePath }, async (error, stdout, stderr) => {
         if (error) {
             output_channel.appendLine("Error checking version: " + error.message);
-            output_channel.appendLine("stdout: " + stdout);
-            output_channel.appendLine("stderr: " + stderr);
+            output_channel.appendLine("stdout:\n" + stdout);
+            output_channel.appendLine("stderr:\n" + stderr);
             vscode.window.showErrorMessage(`Cppcheck-Turbo: ${error.message}`);
             statusBarItem.text = "Error checking " + path.basename(fileToCheck.fileName);
             setTimeout(() => {
@@ -323,7 +335,7 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
             try {
                 const data = fs.readFileSync(cppcheckXmlFile, 'utf-8');
                 startTime = Date.now();
-                parseCppcheckOutput(data, minSevNum, diagnosticCollection);
+                parseCppcheckOutput(data, minSevNum, diagnosticCollection, workspacePath);
                 endTime = Date.now();
                 output_channel.appendLine(`Time taken to parse output: ${endTime - startTime}ms`);
                 statusBarItem.text = "Done checking " + path.basename(fileToCheck.fileName);
@@ -331,8 +343,9 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
                     statusBarItem.dispose();
                 }, 2000);
             }
-            catch {
+            catch (e) {
                 statusBarItem.text = "Error checking " + path.basename(fileToCheck.fileName);
+                output_channel.appendLine(`Error parsing cppcheck output: ${e}`);
                 setTimeout(() => {
                     statusBarItem.dispose();
                 }, 2000);
