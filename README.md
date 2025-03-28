@@ -37,6 +37,7 @@ Do not specify a template in the `.cppcheck-config` for Cppcheck. This tool uses
 This extension contributes the following settings under `cppcheck-turbo.*`:
 
 - **`cppcheck-turbo.enable`**: (boolean) Enable or disable the extension.  
+- **`cppcheck-turbo.autorun`**: (boolean) Enable or disable the Cppcheck Turbo extension.  
 - **`cppcheck-turbo.minSeverity`**: (string) Minimum severity to report (`info`, `warning`, or `error`).  `info` shows style, performance, portability and information messages.
 - **`cppcheck-turbo.compileCommandsPath`**: (string) The path relative to the root of the workspace to the compile_commands.json. By default it searches the workspace root. This works well with the "cmake.copyCompileCommands" setting from the [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) plugin if you set it to "${workspaceFolder}/compile_commands.json".
 - **`cppcheck-turbo.path`**: (string) Path to the `Cppcheck` executable. If left empty, `Cppcheck` from the system PATH is used.

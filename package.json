@@ -45,7 +45,14 @@
           "cppcheck-turbo.enable": {
             "type": "boolean",
             "default": true,
-            "description": "Enable or disable the Cppcheck Turbo extension."
+            "description": "Enable or disable the Cppcheck Turbo extension.",
+            "order": 2
+          },
+          "cppcheck-turbo.autorun": {
+            "type": "boolean",
+            "default": true,
+            "description": "Autorun cppcheck on visible cpp files.",
+            "order": 1
           },
           "cppcheck-turbo.minSeverity": {
             "type": "string",
