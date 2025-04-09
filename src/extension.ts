@@ -195,7 +195,7 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
                             const range = new vscode.Range(line, col, line, col);
                             const diagnostic = new vscode.Diagnostic(range, error.$.msg, diagSeverity);
                             diagnostic.code = error.$.cwe ? error.$.cwe : " ";
-                            diagnostic.source = error.$.id; //If we don't do this, the codes are empty for some reason. 
+                            diagnostic.source = "Cppcheck-Turbo";
 
                             if (!diagnosticsPerFile.has(location.$.file)) {
                                 diagnosticsPerFile.set(location.$.file, [diagnostic]);
