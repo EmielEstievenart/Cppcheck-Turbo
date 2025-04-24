@@ -2,7 +2,7 @@
   "name": "cppcheck-turbo",
   "displayName": "Cppcheck Turbo",
   "description": "Run Cppcheck on C/C++ files upon save and shows issues in the Problems panel. Compile_commands.json and .cppcheck-config files are used to configure Cppcheck.",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "engines": {
     "vscode": "^1.97.0"
   },
