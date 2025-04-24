@@ -1,5 +1,9 @@
 # Change Log
 
+## [2.0.10] - 2025-04-24
+- Fix file not being founf via compile commands for parsing.
+- Fix defines not being parsed correctly from compile commands.
+
 ## [2.0.9] - 2025-04-21
 - Parse compile_commands.json for defines and include directories. Cppcheck is no longer called with the project flag. This allows adding include directories and in the future even modifying them. 
 

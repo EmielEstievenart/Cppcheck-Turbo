@@ -267,10 +267,11 @@ function getParametersFromCompileCommands(compileCommandsPath: string, analyzedF
 
 function getCompileCommand(compileCommandsPath: string, analyzedFile: string): string {
     let compileCommand = "";
+    let normalizedAnalyzedFile = path.normalize(analyzedFile).toLowerCase();
     // Read the compile_commands.json file and find the command for the analyzed file
     try {
         const compileCommands = JSON.parse(fs.readFileSync(compileCommandsPath, 'utf-8'));
-        const entry = compileCommands.find((entry: any) => path.normalize(entry.file) === path.normalize(analyzedFile));
+        const entry = compileCommands.find((entry: any) => path.normalize(entry.file).toLowerCase() === normalizedAnalyzedFile);
         if (entry && entry.command) {
             compileCommand = entry.command;
         } else {
@@ -291,7 +292,12 @@ function getDefinesFromCompileCommand(compileCommand: string): string[] {
     const matches = compileCommand.matchAll(regex);
     
     for (const match of matches) {
-        defines.push("-D"+match[1]);
+        if (match[1]) {
+            defines.push("-D"+match[1]);
+        }
+        else if (match[2]) {
+            defines.push("-D"+match[2]);
+        }
     }
 
     return defines;
