@@ -1,5 +1,8 @@
 # Change Log
 
+## [2.0.11] - 2025-04-24
+- Show error ID instead of code. This is handy when you want to suppress an error. 
+
 ## [2.0.10] - 2025-04-24
 - Fix file not being founf via compile commands for parsing.
 - Fix defines not being parsed correctly from compile commands.
