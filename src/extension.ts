@@ -348,11 +348,57 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     output_channel.appendLine(`Found .cppcheck-config: ${cppcheckConfigPath}`);
     let cppcheck_config_params = readCppcheckConfig(cppcheckConfigPath);
 
+    let cppcheck_config_special_params = cppcheck_config_params.filter((param) => {
+        return param.startsWith("+");
+    });
+    cppcheck_config_special_params = cppcheck_config_special_params.map((param) => {
+        return param.substring(1);
+    });
+
+    let cppcheck_filtered_includes = cppcheck_config_special_params.filter((param) => {
+        return param.startsWith("I");
+    });
+    cppcheck_filtered_includes = cppcheck_filtered_includes.map((param) => {
+        return param.substring(1);
+    });
+
+    let cppcheck_filtered_defines = cppcheck_config_special_params.filter((param) => {
+        return param.startsWith("D");
+    });
+    cppcheck_filtered_defines = cppcheck_filtered_defines.map((param) => {
+        return param.substring(1);
+    });
+
+
+    cppcheck_config_params = cppcheck_config_params.filter((param) => {
+        return !param.startsWith("+");
+    });
+    
+
     let cppcheckParameterTemplate = '--xml';
     let cppcheckParameterFileFilter = `--file-filter="${filePath}"`;
     let cppcheckParameterProject = `--project="${compileCommandsPath}"`;
 
     let compileCommandsParams = getParametersFromCompileCommands(compileCommandsPath, filePath);
+
+    let filteredCompileCommandsParams = compileCommandsParams.filter((param) => {
+
+        if (param.startsWith("-I")) {
+            for (const specialParam of cppcheck_filtered_includes) {
+                if (param.includes(specialParam)) {
+                    return false;
+                }
+            }
+        }
+        if (param.startsWith("-D")) {
+            for (const specialParam of cppcheck_filtered_defines) {
+                if (param.includes(specialParam)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    });
 
     if (!useCompileCommands) {
         // Clear this as we expect the user to configure the rest via the .cppcheck-config file
@@ -361,7 +407,7 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     let cppcheckXmlFile = "cppcheck_errors" + xmlFileIndex.toString() + ".xml";
     xmlFileIndex++;
 
-    let cppcheckCommand = `"${cppcheckExePath}" ${filePath} ${cppcheck_config_params.join(' ')} ${compileCommandsParams.join(' ')} ${cppcheckParameterTemplate} 2> ${cppcheckXmlFile}`;
+    let cppcheckCommand = `"${cppcheckExePath}" ${filePath} ${cppcheck_config_params.join(' ')} ${filteredCompileCommandsParams.join(' ')} ${cppcheckParameterTemplate} 2> ${cppcheckXmlFile}`;
     cppcheckCommand = cppcheckCommand.replace(/\\/g, '/');
 
     const minSevNum = parseMinSeverity(minSevString);
