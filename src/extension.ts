@@ -299,12 +299,13 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
 
     if (!useCompileCommands) {
         // Clear this as we expect the user to configure the rest via the .cppcheck-config file
-        cppcheckParameterProject = "";
+        cppcheckParameterProject = ".";
     }
-    let cppcheckXmlFile = path.resolve('.', "cppcheck_errors" + xmlFileIndex.toString() + ".xml");
+    if (!fs.existsSync(buildDirectory)) fs.mkdirSync(buildDirectory, {recursive:true});
+    let cppcheckXmlFile = path.resolve(buildDirectory, "cppcheck_errors" + xmlFileIndex.toString() + ".xml");
     xmlFileIndex++;
 
-    let cppcheckCommand = `"${cppcheckExePath}" ${cppcheck_config_params.join(' ')} ${cppcheckParameterFileFilter} ${cppcheckParameterTemplate} ${cppcheckParameterProject} 2> ${cppcheckXmlFile}`;
+    let cppcheckCommand = `${cppcheckExePath} ${cppcheck_config_params.join(' ')} ${cppcheckParameterFileFilter} ${cppcheckParameterTemplate} ${cppcheckParameterProject} 2> ${cppcheckXmlFile}`;
     cppcheckCommand = cppcheckCommand.replace(/\\/g, '/');
 
     const minSevNum = parseMinSeverity(minSevString);
