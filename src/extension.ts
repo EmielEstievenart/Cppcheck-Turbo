@@ -3,7 +3,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 // import * as CMakeTools from 'vscode-cmake-tools';
 import * as fs from 'fs';
-
 import xml2js from 'xml2js';
 
 enum SeverityNumber {
@@ -196,8 +195,8 @@ function parseCppcheckOutput(output: string, minSevNum: SeverityNumber, diagnost
 
                             const range = new vscode.Range(line, col, line, col);
                             const diagnostic = new vscode.Diagnostic(range, error.$.msg, diagSeverity);
-                            diagnostic.code = error.$.cwe ? error.$.cwe : " ";
-                            diagnostic.source = error.$.id; //If we don't do this, the codes are empty for some reason. 
+                            diagnostic.code = error.$.id ? error.$.id : " ";
+                            diagnostic.source = "Cppcheck-Turbo";
                             const file = workspacePath + path.sep + location.$.file;
 
                             if (!diagnosticsPerFile.has(file)) {
@@ -253,6 +252,74 @@ function runCppcheckChain(
     });
 }
 
+function getParametersFromCompileCommands(compileCommandsPath: string, analyzedFile: string): string[] {
+    let parameters: string[] = [];
+
+    let command = getCompileCommand(compileCommandsPath, analyzedFile);
+    if (command) {
+        getDefinesFromCompileCommand(command).forEach((define) => {
+            parameters.push(define);
+        });
+        getIncludePathsFromCompileCommand(command).forEach((includePath) => {
+            parameters.push(includePath);
+        });
+    }
+
+    return parameters;
+}
+
+function getCompileCommand(compileCommandsPath: string, analyzedFile: string): string {
+    let compileCommand = "";
+    let normalizedAnalyzedFile = path.normalize(analyzedFile).toLowerCase();
+    // Read the compile_commands.json file and find the command for the analyzed file
+    try {
+        const compileCommands = JSON.parse(fs.readFileSync(compileCommandsPath, 'utf-8'));
+        const entry = compileCommands.find((entry: any) => path.normalize(entry.file).toLowerCase() === normalizedAnalyzedFile);
+        if (entry && entry.command) {
+            compileCommand = entry.command;
+        } else {
+            output_channel.appendLine(`No compile command found for file: ${analyzedFile}`);
+        }
+    } catch (error) {
+        output_channel.appendLine(`Error reading compile_commands.json: ${error}`);
+    }
+    return compileCommand;
+}
+
+function getDefinesFromCompileCommand(compileCommand: string): string[] {
+
+    let defines: string[] = [];
+    // Example compile command: g++ -DDEBUG -Iinclude -o output file.cpp
+    const regex = RegExp(/\/D(\S+)|\-D(\S+)/, 'g');
+    
+    const matches = compileCommand.matchAll(regex);
+    
+    for (const match of matches) {
+        if (match[1]) {
+            defines.push("-D"+match[1]);
+        }
+        else if (match[2]) {
+            defines.push("-D"+match[2]);
+        }
+    }
+
+    return defines;
+}
+
+function getIncludePathsFromCompileCommand(compileCommand: string): string[] {
+
+    let includePaths: string[] = [];
+    const regex = RegExp(/\-I(\S+)/, 'g');
+    
+    const matches = compileCommand.matchAll(regex);
+    
+    for (const match of matches) {
+        includePaths.push("-I"+match[1]);
+    }
+
+    return includePaths;
+}
+
 function runCppcheck(fileToCheck: vscode.TextDocument,
     cppcheckExePath: string,
     minSevString: string,
@@ -297,15 +364,17 @@ function runCppcheck(fileToCheck: vscode.TextDocument,
     let cppcheckParameterFileFilter = `--file-filter="${capitalizeFirstLetter(filePath)}"`;
     let cppcheckParameterProject = `--project="${compileCommandsPath}"`;
 
+    let compileCommandsParams = getParametersFromCompileCommands(compileCommandsPath, filePath);
+
     if (!useCompileCommands) {
         // Clear this as we expect the user to configure the rest via the .cppcheck-config file
-        cppcheckParameterProject = ".";
+        cppcheckParameterProject = "";
     }
     if (!fs.existsSync(buildDirectory)) fs.mkdirSync(buildDirectory, {recursive:true});
     let cppcheckXmlFile = path.resolve(buildDirectory, "cppcheck_errors" + xmlFileIndex.toString() + ".xml");
     xmlFileIndex++;
 
-    let cppcheckCommand = `${cppcheckExePath} ${cppcheck_config_params.join(' ')} ${cppcheckParameterFileFilter} ${cppcheckParameterTemplate} ${cppcheckParameterProject} 2> ${cppcheckXmlFile}`;
+    let cppcheckCommand = `${cppcheckExePath} ${filePath} ${cppcheck_config_params.join(' ')} ${compileCommandsParams.join(' ')} ${cppcheckParameterTemplate} 2> ${cppcheckXmlFile}`;
     cppcheckCommand = cppcheckCommand.replace(/\\/g, '/');
 
     const minSevNum = parseMinSeverity(minSevString);

@@ -1,6 +1,6 @@
 # Cppcheck Turbo
 
-**Cppcheck Turbo** runs [Cppcheck](https://cppcheck.sourceforge.net/) against C/C++ files upon save and reports any warnings or errors in the problems panel. This version is based on https://github.com/JustusRijke/Cppcheck-Lite by JustusRijke. Cppcheck Turbo uses `compile_commands.json` to provide Cppcheck with the necessary information to analyze a complex project. Cppcheck Turbo also uses a `.cppcheck-config` file to customize how Cppcheck checks individual files. You can think of a `.cppcheck-config` file as similar to a .clang-tidy or .clang-format file.
+**Cppcheck Turbo** runs [Cppcheck](https://cppcheck.sourceforge.net/) against C/C++ files upon save and reports any warnings or errors in the problems panel. This version is based on https://github.com/JustusRijke/Cppcheck-Lite by JustusRijke. Cppcheck Turbo uses a `.cppcheck-config` file to customize how Cppcheck checks individual files. You can think of a `.cppcheck-config` file as similar to a .clang-tidy or .clang-format file. Cppcheck Turbo can use `compile_commands.json` to provide Cppcheck with the necessary information to analyze a complex project. Alternatively you can provide defines and include directories via a .cppcheck-config file. 
 
 ## Features
 
@@ -9,6 +9,7 @@
 - **Configurable severity threshold**: Filter out messages below a chosen severity level (`info`, `warning`, or `error`).
 - **Configurable**: Cppcheck Turbo searches for a `.cppcheck-config` file in the same folder or up as the file being checked. This allows for easy configuration of Cppcheck by adding a `.cppcheck-config` file to your project.
 - **Output window diagnostics**: In case of problems, you can monitor the plugin in the output tab in its own channel. 
+- **compile_commands parsing**: When used, the compile_commands.json is parsed by Cppcheck Turbo and offers the defines and include directories seperately to Cppcheck. This allows maximum flexibility since you can add extra include directories. Cppcheck doesn't know it's using compile_commands.json. 
 
 ![Local GIF](https://github.com/EmielEstievenart/Cppcheck-Turbo/blob/main/images/howTo.gif?raw=true)
 
@@ -27,6 +28,7 @@ Example of a `.cppcheck-config` file:
 --check-level=exhaustive
 --enable=all
 -DTEST=1
+-I/extra/include/dir
 #this is a comment
 ```
 ## Warning 
